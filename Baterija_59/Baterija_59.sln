@@ -5,6 +5,10 @@ VisualStudioVersion = 17.14.37216.2 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Baterija_59", "Baterija_59\Baterija_59.csproj", "{0A51E029-F240-4FE3-A756-771261235500}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Baterija_59.Client", "Baterija_59.Client\Baterija_59.Client.csproj", "{2FF956C5-9EF0-4C36-B1E2-2709B2578C0B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Baterija_59.Host", "Baterija_59.Host\Baterija_59.Host.csproj", "{2D7B62FD-F629-4E94-98F4-DC18FABA8FF3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{0A51E029-F240-4FE3-A756-771261235500}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A51E029-F240-4FE3-A756-771261235500}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A51E029-F240-4FE3-A756-771261235500}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FF956C5-9EF0-4C36-B1E2-2709B2578C0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FF956C5-9EF0-4C36-B1E2-2709B2578C0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FF956C5-9EF0-4C36-B1E2-2709B2578C0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FF956C5-9EF0-4C36-B1E2-2709B2578C0B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D7B62FD-F629-4E94-98F4-DC18FABA8FF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D7B62FD-F629-4E94-98F4-DC18FABA8FF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D7B62FD-F629-4E94-98F4-DC18FABA8FF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D7B62FD-F629-4E94-98F4-DC18FABA8FF3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
