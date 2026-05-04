@@ -1,0 +1,30 @@
+# Build folders
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Debug files
+*.pdb
+*.cache
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# NuGet
+packages/
+*.nupkg
+
+# Rider (ako ikad koristiš)
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
