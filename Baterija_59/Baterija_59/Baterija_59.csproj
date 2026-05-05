@@ -45,6 +45,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IEisService.cs" />
+    <Compile Include="Models\AckResponse.cs" />
+    <Compile Include="Models\EisMeta.cs" />
+    <Compile Include="Models\EisSample.cs" />
+    <Compile Include="Models\TransferStatus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="EisService.cs" />
   </ItemGroup>
