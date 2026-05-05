@@ -44,6 +44,8 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Faults\DataFormatFault.cs" />
+    <Compile Include="Faults\ValidationFault.cs" />
     <Compile Include="IEisService.cs" />
     <Compile Include="Models\AckResponse.cs" />
     <Compile Include="Models\EisMeta.cs" />
