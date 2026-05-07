@@ -4,10 +4,10 @@ using System.ServiceModel;
 
 namespace Baterija_59
 {
-    [ServiceContract]
+    [ServiceContract(SessionMode = SessionMode.Required)]
     public interface IEisService
     {
-        [OperationContract]
+        [OperationContract(IsInitiating = true)]
         [FaultContract(typeof(ValidationFault))]
         [FaultContract(typeof(DataFormatFault))]
         AckResponse StartSession(EisMeta meta);
@@ -17,7 +17,7 @@ namespace Baterija_59
         [FaultContract(typeof(DataFormatFault))]
         AckResponse PushSample(EisSample sample);
 
-        [OperationContract]
+        [OperationContract(IsTerminating = true)]
         [FaultContract(typeof(ValidationFault))]
         [FaultContract(typeof(DataFormatFault))]
         AckResponse EndSession();

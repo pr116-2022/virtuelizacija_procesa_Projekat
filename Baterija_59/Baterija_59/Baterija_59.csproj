@@ -47,6 +47,7 @@
     <Compile Include="Faults\DataFormatFault.cs" />
     <Compile Include="Faults\ValidationFault.cs" />
     <Compile Include="IEisService.cs" />
+    <Compile Include="IO\CsvSessionWriter.cs" />
     <Compile Include="Models\AckResponse.cs" />
     <Compile Include="Models\EisMeta.cs" />
     <Compile Include="Models\EisSample.cs" />

@@ -2,6 +2,7 @@
 using Baterija_59.Models;
 using System;
 using System.ServiceModel;
+using Baterija_59.IO;
 
 namespace Baterija_59
 {
@@ -10,6 +11,7 @@ namespace Baterija_59
     {
         private EisMeta currentMeta;
         private int lastRowIndex = -1;
+        private CsvSessionWriter csvWriter;
 
         public AckResponse StartSession(EisMeta meta)
         {
@@ -17,6 +19,8 @@ namespace Baterija_59
 
             currentMeta = meta;
             lastRowIndex = -1;
+
+            csvWriter = new CsvSessionWriter(meta);
 
             Console.WriteLine("Pokrenuta sesija:");
             Console.WriteLine("BatteryId: " + meta.BatteryId);
@@ -49,6 +53,8 @@ namespace Baterija_59
 
             lastRowIndex = sample.RowIndex;
 
+            csvWriter.WriteSample(sample);
+
             Console.WriteLine("Primljen sample RowIndex: " + sample.RowIndex);
 
             return new AckResponse(
@@ -65,6 +71,12 @@ namespace Baterija_59
                 ThrowValidationFault("Ne postoji aktivna sesija.", "Session");
             }
             Console.WriteLine("Zavrsena sesija za fajl: " + currentMeta.FileName);
+
+            if (csvWriter != null)
+            {
+                csvWriter.Dispose();
+                csvWriter = null;
+            }
 
             currentMeta = null;
             lastRowIndex = -1;
