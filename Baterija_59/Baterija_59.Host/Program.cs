@@ -19,18 +19,24 @@ namespace Baterija_59.Host
                 Console.WriteLine("Pritisni ENTER za gasenje.");
 
                 Console.ReadLine();
+
+                host.Close();
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Greska:");
-                Console.WriteLine(ex.Message);
-            }
-            finally
-            {
+                Console.WriteLine(ex.ToString());
+            
                 if (host != null)
                 {
                     host.Close();
                 }
+
+                Console.WriteLine();
+                Console.WriteLine("Pritisni ENTER za izlaz.");
+                Console.ReadLine();
+
+
             }
         }
     }
