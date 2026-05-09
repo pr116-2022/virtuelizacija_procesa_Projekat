@@ -11,14 +11,21 @@ namespace Baterija_59
     {
         private EisMeta currentMeta;
         private int lastRowIndex = -1;
+        private int receivedRows = 0;
         private CsvSessionWriter csvWriter;
 
         public AckResponse StartSession(EisMeta meta)
         {
+            if (currentMeta != null)
+            {
+                ThrowValidationFault("Sesija je vec pokrenuta.", "Session");
+            }
+
             ValidateMeta(meta);
 
             currentMeta = meta;
             lastRowIndex = -1;
+            receivedRows = 0;
 
             csvWriter = new CsvSessionWriter(meta);
 
@@ -33,15 +40,19 @@ namespace Baterija_59
                 true,
                 "Sesija je uspesno pokrenuta.",
                 TransferStatus.IN_PROGRESS
-                );
+            );
         }
-
 
         public AckResponse PushSample(EisSample sample)
         {
             if (currentMeta == null)
             {
                 ThrowValidationFault("Sesija nije pokrenuta. Prvo pozvati StartSession.", "Session");
+            }
+
+            if (csvWriter == null)
+            {
+                ThrowValidationFault("CSV writer nije otvoren.", "CsvSessionWriter");
             }
 
             ValidateSample(sample);
@@ -52,6 +63,7 @@ namespace Baterija_59
             }
 
             lastRowIndex = sample.RowIndex;
+            receivedRows++;
 
             csvWriter.WriteSample(sample);
 
@@ -70,16 +82,27 @@ namespace Baterija_59
             {
                 ThrowValidationFault("Ne postoji aktivna sesija.", "Session");
             }
+
+            if (receivedRows != currentMeta.TotalRows)
+            {
+                string message = "Broj primljenih redova se ne poklapa sa TotalRows. Primljeno: "
+                    + receivedRows + ", ocekivano: " + currentMeta.TotalRows;
+
+                CloseWriter();
+                currentMeta = null;
+                lastRowIndex = -1;
+                receivedRows = 0;
+
+                ThrowValidationFault(message, "TotalRows");
+            }
+
             Console.WriteLine("Zavrsena sesija za fajl: " + currentMeta.FileName);
 
-            if (csvWriter != null)
-            {
-                csvWriter.Dispose();
-                csvWriter = null;
-            }
+            CloseWriter();
 
             currentMeta = null;
             lastRowIndex = -1;
+            receivedRows = 0;
 
             return new AckResponse(
                 true,
@@ -100,14 +123,24 @@ namespace Baterija_59
                 ThrowValidationFault("BatteryId je obavezan.", "BatteryId");
             }
 
+            if (!IsValidBatteryId(meta.BatteryId))
+            {
+                ThrowValidationFault("BatteryId mora biti u opsegu B01 do B11.", "BatteryId");
+            }
+
             if (string.IsNullOrWhiteSpace(meta.TestId))
             {
                 ThrowValidationFault("TestId je obavezan.", "TestId");
             }
 
-            if (meta.SocPercent < 0 || meta.SocPercent > 100)
+            if (meta.TestId != "Test_1" && meta.TestId != "Test_2")
             {
-                ThrowValidationFault("SoC mora biti između 0 i 100.", "SocPercent");
+                ThrowValidationFault("TestId mora biti Test_1 ili Test_2.", "TestId");
+            }
+
+            if (meta.SocPercent < 5 || meta.SocPercent > 100 || meta.SocPercent % 5 != 0)
+            {
+                ThrowValidationFault("SoC mora biti 5, 10, 15, ..., 100.", "SocPercent");
             }
 
             if (string.IsNullOrWhiteSpace(meta.FileName))
@@ -119,6 +152,38 @@ namespace Baterija_59
             {
                 ThrowValidationFault("TotalRows mora biti pozitivan broj.", "TotalRows");
             }
+
+            if (meta.TotalRows > 28)
+            {
+                ThrowValidationFault("TotalRows ne sme biti veci od 28 za EIS CSV fajl.", "TotalRows");
+            }
+        }
+
+        private bool IsValidBatteryId(string batteryId)
+        {
+            if (batteryId.Length != 3)
+            {
+                return false;
+            }
+
+            if (batteryId[0] != 'B')
+            {
+                return false;
+            }
+
+            int number;
+
+            if (!int.TryParse(batteryId.Substring(1), out number))
+            {
+                return false;
+            }
+
+            if (number < 1 || number > 11)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void ValidateSample(EisSample sample)
@@ -152,6 +217,25 @@ namespace Baterija_59
             {
                 ThrowValidationFault("V nije validna vrednost.", "V");
             }
+
+            if (double.IsNaN(sample.T_degC) || double.IsInfinity(sample.T_degC))
+            {
+                ThrowValidationFault("T_degC nije validna vrednost.", "T_degC");
+            }
+
+            if (double.IsNaN(sample.Range_ohm) || double.IsInfinity(sample.Range_ohm))
+            {
+                ThrowValidationFault("Range_ohm nije validna vrednost.", "Range_ohm");
+            }
+        }
+
+        private void CloseWriter()
+        {
+            if (csvWriter != null)
+            {
+                csvWriter.Dispose();
+                csvWriter = null;
+            }
         }
 
         private void ThrowValidationFault(string message, string fieldName)
@@ -159,6 +243,5 @@ namespace Baterija_59
             ValidationFault fault = new ValidationFault(message, fieldName);
             throw new FaultException<ValidationFault>(fault, new FaultReason(message));
         }
-
     }
 }
