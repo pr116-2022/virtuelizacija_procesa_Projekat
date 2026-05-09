@@ -1,5 +1,8 @@
-﻿using Baterija_59.Models;
+﻿using Baterija_59.Client.IO;
+using Baterija_59.Models;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.ServiceModel;
 
 namespace Baterija_59.Client
@@ -13,58 +16,74 @@ namespace Baterija_59.Client
 
             try
             {
+                Console.WriteLine("Unesite punu putanju do CSV fajla:");
+                string csvPath = Console.ReadLine();
+
+                if (!File.Exists(csvPath))
+                {
+                    Console.WriteLine("Fajl ne postoji.");
+                    Console.ReadLine();
+                    return;
+                }
+
+                Console.Write("Unesite BatteryId, npr. B01: ");
+                string batteryId = Console.ReadLine();
+
+                Console.Write("Unesite TestId, npr. Test_1: ");
+                string testId = Console.ReadLine();
+
+                Console.Write("Unesite SoC procenat, npr. 50: ");
+                int socPercent = int.Parse(Console.ReadLine());
+
+                List<EisSample> samples;
+
+                using (CsvDatasetReader reader = new CsvDatasetReader(csvPath))
+                {
+                    samples = reader.ReadAllSamples();
+                }
+
+                if (samples.Count == 0)
+                {
+                    Console.WriteLine("Nema ucitanih validnih redova iz CSV fajla.");
+                    Console.ReadLine();
+                    return;
+                }
+
+                if (samples.Count != 28)
+                {
+                    Console.WriteLine("Upozorenje: Ocekivano je 28 redova, a ucitano je " + samples.Count);
+                }
+
+                EisMeta meta = new EisMeta
+                {
+                    BatteryId = batteryId,
+                    TestId = testId,
+                    SocPercent = socPercent,
+                    FileName = Path.GetFileName(csvPath),
+                    TotalRows = samples.Count
+                };
+
                 factory = new ChannelFactory<IEisService>("EisServiceEndpoint");
                 proxy = factory.CreateChannel();
 
                 Console.WriteLine("Povezivanje sa EIS servisom...");
 
-                EisMeta meta = new EisMeta
-                {
-                    BatteryId = "B01",
-                    TestId = "Test_1",
-                    SocPercent = 50,
-                    FileName = "B01_Test_1_SOC_50.csv",
-                    TotalRows = 2
-                };
-
                 AckResponse startResponse = proxy.StartSession(meta);
-                Console.WriteLine($"StartSession: {startResponse.IsAck} | {startResponse.Message} | {startResponse.Status}");
+                Console.WriteLine("StartSession: " + startResponse.IsAck + " | " + startResponse.Message + " | " + startResponse.Status);
 
-                EisSample sample1 = new EisSample
+                for (int i = 0; i < samples.Count; i++)
                 {
-                    RowIndex = 0,
-                    FrequencyHz = 1000,
-                    R_ohm = 0.12,
-                    X_ohm = 0.03,
-                    V = 3.7,
-                    T_degC = 25,
-                    Range_ohm = 1
-                };
-
-                AckResponse pushResponse1 = proxy.PushSample(sample1);
-                Console.WriteLine($"PushSample 1: {pushResponse1.IsAck} | {pushResponse1.Message} | {pushResponse1.Status}");
-
-                EisSample sample2 = new EisSample
-                {
-                    RowIndex = 1,
-                    FrequencyHz = 500,
-                    R_ohm = 0.13,
-                    X_ohm = 0.04,
-                    V = 3.9,
-                    T_degC = 25,
-                    Range_ohm = 1
-                };
-
-                AckResponse pushResponse2 = proxy.PushSample(sample2);
-                Console.WriteLine($"PushSample 2: {pushResponse2.IsAck} | {pushResponse2.Message} | {pushResponse2.Status}");
+                    AckResponse pushResponse = proxy.PushSample(samples[i]);
+                    Console.WriteLine("PushSample " + (i + 1) + ": " + pushResponse.IsAck + " | " + pushResponse.Message + " | " + pushResponse.Status);
+                }
 
                 AckResponse endResponse = proxy.EndSession();
-                Console.WriteLine($"EndSession: {endResponse.IsAck} | {endResponse.Message} | {endResponse.Status}");
+                Console.WriteLine("EndSession: " + endResponse.IsAck + " | " + endResponse.Message + " | " + endResponse.Status);
 
                 ((IClientChannel)proxy).Close();
                 factory.Close();
 
-                Console.WriteLine("Test zavrsen uspesno.");
+                Console.WriteLine("Slanje CSV fajla je zavrseno uspesno.");
             }
             catch (FaultException ex)
             {
@@ -78,7 +97,9 @@ namespace Baterija_59.Client
             }
             finally
             {
-                if (proxy is IClientChannel channel && channel.State != CommunicationState.Closed)
+                IClientChannel channel = proxy as IClientChannel;
+
+                if (channel != null && channel.State != CommunicationState.Closed)
                 {
                     channel.Abort();
                 }
