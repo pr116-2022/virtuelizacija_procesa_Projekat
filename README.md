@@ -11,13 +11,13 @@ Servis validira podatke, čuva ih na disk i vrši analitiku nad naponom i impeda
 
 ## Arhitektura sistema
 
-![Architecture](Documentation/Architecture.png)
+![Architecture](Baterija_59/Documentation/Architecture.png)
 
 ---
 
 ## Sekvencijalni tok komunikacije
 
-![Sequence](Documentation/Sequence.png)
+![Sequence](Baterija_59/Documentation/Sequence.png)
 
 ---
 
