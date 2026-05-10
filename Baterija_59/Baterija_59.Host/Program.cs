@@ -26,17 +26,15 @@ namespace Baterija_59.Host
             {
                 Console.WriteLine("Greska:");
                 Console.WriteLine(ex.ToString());
-            
+
                 if (host != null)
                 {
-                    host.Close();
+                    host.Abort();
                 }
 
                 Console.WriteLine();
                 Console.WriteLine("Pritisni ENTER za izlaz.");
                 Console.ReadLine();
-
-
             }
         }
     }

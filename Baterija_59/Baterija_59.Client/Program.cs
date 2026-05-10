@@ -217,6 +217,9 @@ namespace Baterija_59.Client
 
                 factory.Close();
 
+                proxy = null;
+                factory = null;
+
                 Console.WriteLine("Slanje CSV fajla je zavrseno uspesno.");
                 return true;
             }
@@ -229,21 +232,39 @@ namespace Baterija_59.Client
             catch (Exception ex)
             {
                 Console.WriteLine("Greska pri slanju CSV fajla:");
-                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.ToString());
                 return false;
             }
             finally
             {
                 IClientChannel channel = proxy as IClientChannel;
 
-                if (channel != null && channel.State != CommunicationState.Closed)
+                if (channel != null)
                 {
-                    channel.Abort();
+                    try
+                    {
+                        if (channel.State != CommunicationState.Closed)
+                        {
+                            channel.Abort();
+                        }
+                    }
+                    catch
+                    {
+                    }
                 }
 
-                if (factory != null && factory.State != CommunicationState.Closed)
+                if (factory != null)
                 {
-                    factory.Abort();
+                    try
+                    {
+                        if (factory.State != CommunicationState.Closed)
+                        {
+                            factory.Abort();
+                        }
+                    }
+                    catch
+                    {
+                    }
                 }
             }
         }

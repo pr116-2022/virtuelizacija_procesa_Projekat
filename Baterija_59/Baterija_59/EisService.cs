@@ -1,8 +1,10 @@
-﻿using Baterija_59.Faults;
+﻿using Baterija_59.Events;
+using Baterija_59.Faults;
+using Baterija_59.IO;
 using Baterija_59.Models;
 using System;
+using System.Configuration;
 using System.ServiceModel;
-using Baterija_59.IO;
 
 namespace Baterija_59
 {
@@ -13,6 +15,32 @@ namespace Baterija_59
         private int lastRowIndex = -1;
         private int receivedRows = 0;
         private CsvSessionWriter csvWriter;
+
+        private EisSample previousSample;
+        private double previousZ;
+        private double zSum = 0;
+        private int zCount = 0;
+
+        private double vThreshold;
+        private double zThreshold;
+        private double runningMeanPercent;
+
+        public event EventHandler<TransferEventArgs> OnTransferStarted;
+        public event EventHandler<SampleReceivedEventArgs> OnSampleReceived;
+        public event EventHandler<TransferEventArgs> OnTransferCompleted;
+        public event EventHandler<WarningEventArgs> OnWarningRaised;
+
+        public EisService()
+        {
+            OnTransferStarted += LogTransferStarted;
+            OnSampleReceived += LogSampleReceived;
+            OnTransferCompleted += LogTransferCompleted;
+            OnWarningRaised += LogWarningRaised;
+            vThreshold = ReadDoubleSetting("V_threshold", 0.2);
+            zThreshold = ReadDoubleSetting("Z_threshold", 0.1);
+            runningMeanPercent = ReadDoubleSetting("RunningMeanPercent", 25);
+
+        }
 
         public AckResponse StartSession(EisMeta meta)
         {
@@ -27,7 +55,14 @@ namespace Baterija_59
             lastRowIndex = -1;
             receivedRows = 0;
 
+            previousSample = null;
+            previousZ = 0;
+            zSum = 0;
+            zCount = 0;
+
             csvWriter = new CsvSessionWriter(meta);
+
+            RaiseTransferStarted(meta);
 
             Console.WriteLine("Pokrenuta sesija:");
             Console.WriteLine("BatteryId: " + meta.BatteryId);
@@ -67,6 +102,10 @@ namespace Baterija_59
 
             csvWriter.WriteSample(sample);
 
+            AnalyzeSample(sample);
+
+            RaiseSampleReceived(sample);
+
             Console.WriteLine("Primljen sample RowIndex: " + sample.RowIndex);
 
             return new AckResponse(
@@ -93,10 +132,17 @@ namespace Baterija_59
                 lastRowIndex = -1;
                 receivedRows = 0;
 
+                previousSample = null;
+                previousZ = 0;
+                zSum = 0;
+                zCount = 0;
+
                 ThrowValidationFault(message, "TotalRows");
             }
 
             Console.WriteLine("Zavrsena sesija za fajl: " + currentMeta.FileName);
+
+            RaiseTransferCompleted(currentMeta);
 
             CloseWriter();
 
@@ -237,6 +283,122 @@ namespace Baterija_59
                 csvWriter = null;
             }
         }
+
+        private void RaiseTransferStarted(EisMeta meta)
+        {
+            OnTransferStarted?.Invoke(this, new TransferEventArgs(meta));
+        }
+
+        private void RaiseSampleReceived(EisSample sample)
+        {
+            OnSampleReceived?.Invoke(this, new SampleReceivedEventArgs(currentMeta, sample));
+        }
+
+        private void RaiseTransferCompleted(EisMeta meta)
+        {
+            OnTransferCompleted?.Invoke(this, new TransferEventArgs(meta));
+        }
+
+        private void RaiseWarning(EisSample sample, string warningType, string message)
+        {
+            OnWarningRaised?.Invoke(this, new WarningEventArgs(currentMeta, sample, warningType, message));
+        }
+
+        private void LogTransferStarted(object sender, TransferEventArgs e)
+        {
+            Console.WriteLine("[EVENT] Transfer started: " + e.Meta.FileName);
+        }
+
+        private void LogSampleReceived(object sender, SampleReceivedEventArgs e)
+        {
+            Console.WriteLine("[EVENT] Sample received: RowIndex=" + e.Sample.RowIndex);
+        }
+
+        private void LogTransferCompleted(object sender, TransferEventArgs e)
+        {
+            Console.WriteLine("[EVENT] Transfer completed: " + e.Meta.FileName);
+        }
+
+        private void LogWarningRaised(object sender, WarningEventArgs e)
+        {
+            Console.WriteLine("[WARNING] " + e.WarningType + " | " + e.Message);
+        }
+
+        private void AnalyzeSample(EisSample sample)
+        {
+            double currentZ = Math.Sqrt(sample.R_ohm * sample.R_ohm + sample.X_ohm * sample.X_ohm);
+
+            if (previousSample != null)
+            {
+                double deltaV = sample.V - previousSample.V;
+
+                if (Math.Abs(deltaV) > vThreshold)
+                {
+                    string direction = deltaV > 0 ? "iznad ocekivanog" : "ispod ocekivanog";
+
+                    RaiseWarning(
+                        sample,
+                        "VoltageSpike",
+                        "Detektovana nagla promena napona. DeltaV=" + deltaV + ", smer=" + direction
+                    );
+                }
+
+                double deltaZ = currentZ - previousZ;
+
+                if (Math.Abs(deltaZ) > zThreshold)
+                {
+                    string direction = deltaZ > 0 ? "iznad ocekivanog" : "ispod ocekivanog";
+
+                    RaiseWarning(
+                        sample,
+                        "ImpedanceJump",
+                        "Detektovana nagla promena impedanse. DeltaZ=" + deltaZ + ", smer=" + direction
+                    );
+                }
+            }
+
+            if (zCount > 0)
+            {
+                double runningMean = zSum / zCount;
+
+                double lowerLimit = runningMean * (1 - runningMeanPercent / 100.0);
+                double upperLimit = runningMean * (1 + runningMeanPercent / 100.0);
+
+                if (currentZ < lowerLimit || currentZ > upperLimit)
+                {
+                    string direction = currentZ > upperLimit ? "iznad ocekivane vrednosti" : "ispod ocekivane vrednosti";
+
+                    RaiseWarning(
+                        sample,
+                        "OutOfBandWarning",
+                        "Impedansa odstupa od tekuceg proseka. Z=" + currentZ +
+                        ", prosek=" + runningMean +
+                        ", smer=" + direction
+                    );
+                }
+            }
+
+            zSum += currentZ;
+            zCount++;
+
+            previousSample = sample;
+            previousZ = currentZ;
+        }
+
+        private double ReadDoubleSetting(string key, double defaultValue)
+        {
+            string value = ConfigurationManager.AppSettings[key];
+
+            double result;
+
+            if (double.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out result))
+            {
+                return result;
+            }
+
+            return defaultValue;
+        }
+
 
         private void ThrowValidationFault(string message, string fieldName)
         {
